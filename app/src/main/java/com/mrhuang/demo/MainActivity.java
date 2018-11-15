@@ -27,7 +27,7 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
 
     @Override
     protected void viewCreated() {
-        String[] menuList = {"SurfaceView with image"};
+        String[] menuList = {"SurfaceView with image", "AudioRecord and AudioTrack"};
         ArrayAdapter adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, menuList);
         listView.setAdapter(adapter);
         listView.setOnItemClickListener(this);
@@ -38,6 +38,9 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
         switch (i) {
             case 0:
                 startActivity(new Intent(this, SurfaceViewActivity.class));
+                break;
+            case 1:
+                startActivity(new Intent(this, AudioRecordActivity.class));
                 break;
         }
     }

@@ -20,6 +20,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".SurfaceViewActivity"></activity>
+
+        <activity android:name=".AudioRecordActivity"></activity>
     </application>
 
 </manifest>

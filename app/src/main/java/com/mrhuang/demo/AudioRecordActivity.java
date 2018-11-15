@@ -1,23 +1,27 @@
 package com.mrhuang.demo;
 
-import android.media.AudioAttributes;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -25,16 +29,19 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.Buffer;
+import java.text.SimpleDateFormat;
+import java.util.logging.SimpleFormatter;
 
-public class AudioRecordActivity extends BaseActivity implements View.OnClickListener {
+public class AudioRecordActivity extends BaseActivity implements View.OnClickListener, RecordListFragment.ItemClickListener {
 
     Button start, stop, play;
     SeekBar seekBar;
 
+    TextView currentTime, totalTime;
+
     AudioRecord audioRecord;
 
-    int rateInHz = 16000;
+    int rateInHz = 44100;
     int channel = AudioFormat.CHANNEL_IN_MONO;
     int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
 
@@ -42,6 +49,9 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
 
 
     AudioTrack audioTrack;
+
+
+    RecordListFragment fragment;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -55,6 +65,9 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
         stop = findViewById(R.id.stop);
         play = findViewById(R.id.play);
 
+        currentTime = findViewById(R.id.currentTime);
+        totalTime = findViewById(R.id.totalTime);
+
         seekBar = findViewById(R.id.seekBar);
     }
 
@@ -63,24 +76,53 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
         start.setOnClickListener(this);
         stop.setOnClickListener(this);
         play.setOnClickListener(this);
+
+        fragment = new RecordListFragment();
+        fragment.setItemClickListener(this);
     }
 
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.start) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    startRecord();
-                }
-            });
+
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.RECORD_AUDIO,
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
+            } else {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        startRecord();
+                    }
+                }).start();
+            }
+
         } else if (v.getId() == R.id.stop) {
             isRecording = false;
         } else if (v.getId() == R.id.play) {
-            playRecord("");
+            fragment.show(getSupportFragmentManager(), "bottom");
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 100) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        startRecord();
+                    }
+                }).start();
+            } else {
+                Toast.makeText(this, "你就给这点权限，我很难帮你办事！", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
 
     public void startRecord() {
 
@@ -94,29 +136,29 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
 
         if (file.exists()) {
 
-
             int bufferSize = AudioRecord.getMinBufferSize(rateInHz, channel, audioEncoding);
             audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, rateInHz, channel, audioEncoding, bufferSize);
 
             try {
                 OutputStream outputStream = new FileOutputStream(file);
-                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
-                DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
+//                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
+//                DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
 
-                byte[] buffer = new byte[bufferSize];
+                byte[] bytes = new byte[bufferSize];
                 audioRecord.startRecording();
 
                 isRecording = true;
 
                 while (isRecording) {
-                    int bufferResult = audioRecord.read(buffer, 0, bufferSize);
-                    for (int i = 0; i < bufferResult; i++) {
-                        dataOutputStream.write(buffer[i]);
+                    int bufferResult = audioRecord.read(bytes, 0, bufferSize);
+                    if (bufferResult > 0) {
+                        outputStream.write(bytes);
                     }
                 }
 
                 audioRecord.stop();
-                dataOutputStream.close();
+                audioRecord.release();
+                outputStream.close();
 
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -136,20 +178,50 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
             short[] music = new short[musicLength];
 
             try {
-                InputStream inputStream = new FileInputStream(filePath);
-                BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
-                DataInputStream dataInputStream = new DataInputStream(bufferedInputStream);
-                int i = 0;
-                while (dataInputStream.read() > 0) {
-                    music[i] = dataInputStream.readShort();
-                    i++;
-                }
-                dataInputStream.close();
+//                InputStream inputStream = new FileInputStream(filePath);
+//                BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+//                DataInputStream dataInputStream = new DataInputStream(bufferedInputStream);
+//                int i = 0;
+//                while (dataInputStream.read() > 0) {
+//                    music[i] = dataInputStream.readShort();
+//                    i++;
+//                }
+//                dataInputStream.close();
 
-                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, rateInHz, channel, audioEncoding, musicLength * 2, AudioTrack.MODE_STREAM);
+
+                int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, AudioFormat.CHANNEL_OUT_MONO, audioEncoding);
+                int length = minBufferSize + 1024;
+                byte[] bytes = new byte[length];
+
+                if (Build.VERSION.SDK_INT >= 23) {
+                    audioTrack = new AudioTrack.Builder()
+                            .setAudioFormat(new AudioFormat.Builder()
+                                    .setEncoding(audioEncoding)
+                                    .setSampleRate(rateInHz)
+                                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                    .build())
+                            .setBufferSizeInBytes(minBufferSize)
+                            .build();
+                } else {
+                    audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, rateInHz,
+                            AudioFormat.CHANNEL_OUT_MONO, audioEncoding,
+                            minBufferSize, AudioTrack.MODE_STREAM);
+                }
+
+                InputStream is = new FileInputStream(filePath);
+
+
+                //实测length参数很重要，太大或者大小都有可能导致异常：play() called on uninitialized AudioTrack
+                //int length = (int) audioFile.length();
+
+                int read;
+                while ((read = is.read(bytes)) > 0) {
+                    audioTrack.write(bytes, 0, read);
+                }
                 audioTrack.play();
-                audioTrack.write(music, 0, musicLength);
-                audioTrack.stop();
+                is.close();
+//                audioTrack.write(music, 0, musicLength);
+//                audioTrack.stop();
 
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -157,6 +229,102 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
                 e.printStackTrace();
             }
         } else {
+
+        }
+    }
+
+    long fileLength = 0;
+
+    @Override
+    public void onRecordClick(File file) {
+        fragment.dismiss();
+
+        int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, AudioFormat.CHANNEL_OUT_MONO, audioEncoding);
+
+        long duration = file.length() / minBufferSize * 1000;
+
+        seekBar.setMax(100);
+        fileLength = file.length();
+        currentTime.setText("0");
+
+        SimpleDateFormat formatter = new SimpleDateFormat("mm:ss");
+        totalTime.setText("" + formatter.format(duration));
+
+        new PlayTask().execute(file.getAbsolutePath());
+    }
+
+
+    public class PlayTask extends AsyncTask<String, Long, Void> {
+
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected Void doInBackground(String... path) {
+            String filePath = path[0];
+            File file = new File(filePath);
+            if (file.exists()) {
+                try {
+                    int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, AudioFormat.CHANNEL_OUT_MONO, audioEncoding);
+                    byte[] bytes = new byte[minBufferSize];
+
+                    if (Build.VERSION.SDK_INT >= 23) {
+                        audioTrack = new AudioTrack.Builder()
+                                .setAudioFormat(new AudioFormat.Builder()
+                                        .setEncoding(audioEncoding)
+                                        .setSampleRate(rateInHz)
+                                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                        .build())
+                                .setBufferSizeInBytes(minBufferSize)
+                                .build();
+                    } else {
+                        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, rateInHz,
+                                AudioFormat.CHANNEL_OUT_MONO, audioEncoding,
+                                minBufferSize, AudioTrack.MODE_STREAM);
+                    }
+
+
+                    audioTrack.play();
+
+                    InputStream is = new FileInputStream(filePath);
+
+                    //实测length参数很重要，太大或者大小都有可能导致异常：play() called on uninitialized AudioTrack
+                    //int length = (int) audioFile.length();
+
+                    int read;
+                    long current = 0;
+                    while ((read = is.read(bytes)) > 0) {
+                        current += read;
+                        audioTrack.write(bytes, 0, bytes.length);
+                        publishProgress(current);
+                    }
+
+                    is.close();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(Long... values) {
+//            seekBar.setProgress(values[0]);
+
+            int percent = (int) (values[0] * 100 / fileLength);
+            seekBar.setProgress(percent);
+            currentTime.setText("" + values[0]);
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
 
         }
     }
