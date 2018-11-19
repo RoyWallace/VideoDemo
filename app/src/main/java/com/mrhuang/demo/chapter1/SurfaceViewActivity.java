@@ -1,7 +1,10 @@
-package com.mrhuang.demo;
+package com.mrhuang.demo.chapter1;
 
 import android.os.Bundle;
 import android.view.SurfaceView;
+
+import com.mrhuang.demo.BaseActivity;
+import com.mrhuang.demo.R;
 
 public class SurfaceViewActivity extends BaseActivity {
 
@@ -21,11 +24,5 @@ public class SurfaceViewActivity extends BaseActivity {
 
     @Override
     protected void viewCreated() {
-
-//        Canvas canvas = surfaceView.getHolder().lockCanvas();
-//        Bitmap bitmap = BitmapFactory.decodeResource(getResources(),R.mipmap.ic_launcher);
-////        Bitmap bitmap1 = ImageDecoder.decodeBitmap()
-//        canvas.drawBitmap(bitmap,0,0,null);
-//        surfaceView.draw(canvas);
     }
 }

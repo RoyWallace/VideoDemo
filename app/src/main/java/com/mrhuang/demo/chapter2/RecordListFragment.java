@@ -1,4 +1,4 @@
-package com.mrhuang.demo;
+package com.mrhuang.demo.chapter2;
 
 import android.os.Bundle;
 import android.os.Environment;
@@ -11,6 +11,8 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import com.mrhuang.demo.R;
 
 import java.io.File;
 

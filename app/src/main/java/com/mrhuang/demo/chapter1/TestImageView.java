@@ -1,4 +1,4 @@
-package com.mrhuang.demo;
+package com.mrhuang.demo.chapter1;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -7,6 +7,8 @@ import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+
+import com.mrhuang.demo.R;
 
 public class TestImageView extends android.support.v7.widget.AppCompatImageView {
 

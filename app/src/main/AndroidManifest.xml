@@ -19,9 +19,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SurfaceViewActivity"></activity>
+        <activity android:name=".chapter1.SurfaceViewActivity"></activity>
 
-        <activity android:name=".AudioRecordActivity"></activity>
+        <activity android:name=".chapter2.AudioRecordActivity"></activity>
     </application>
 
 </manifest>

@@ -1,4 +1,4 @@
-package com.mrhuang.demo;
+package com.mrhuang.demo.chapter2;
 
 import android.util.Log;
 
@@ -42,14 +42,14 @@ public class PcmToWav {
         // 长度字段 = 内容的大小（TOTAL_SIZE) +
         // 头部字段的大小(不包括前面4字节的标识符RIFF以及fileLength本身的4字节)
         header.fileLength = TOTAL_SIZE + (44 - 8);
-        header.FmtHdrLeth = 16;
+        header.FmtHdrLength = 16;
         header.BitsPerSample = 16;
         header.Channels = 1;
         header.FormatTag = 0x0001;
         header.SamplesPerSec = 44100;
         header.BlockAlign = (short) (header.Channels * header.BitsPerSample / 8);
         header.AvgBytesPerSec = header.BlockAlign * header.SamplesPerSec;
-        header.DataHdrLeth = TOTAL_SIZE;
+        header.DataHdrLength = TOTAL_SIZE;
 
         byte[] h = null;
         try {
@@ -120,14 +120,14 @@ public class PcmToWav {
         // 长度字段 = 内容的大小（TOTAL_SIZE) +
         // 头部字段的大小(不包括前面4字节的标识符RIFF以及fileLength本身的4字节)
         header.fileLength = TOTAL_SIZE + (44 - 8);
-        header.FmtHdrLeth = 16;
+        header.FmtHdrLength = 16;
         header.BitsPerSample = 16;
         header.Channels = 1;
         header.FormatTag = 0x0001;
         header.SamplesPerSec = 44100;
         header.BlockAlign = (short) (header.Channels * header.BitsPerSample / 8);
         header.AvgBytesPerSec = header.BlockAlign * header.SamplesPerSec;
-        header.DataHdrLeth = TOTAL_SIZE;
+        header.DataHdrLength = TOTAL_SIZE;
 
         byte[] h = null;
         try {

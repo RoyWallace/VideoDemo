@@ -2,13 +2,13 @@ package com.mrhuang.demo;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Surface;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.ListAdapter;
 import android.widget.ListView;
-import android.widget.SimpleAdapter;
+
+import com.mrhuang.demo.chapter1.SurfaceViewActivity;
+import com.mrhuang.demo.chapter2.AudioRecordActivity;
 
 public class MainActivity extends BaseActivity implements AdapterView.OnItemClickListener {
 
