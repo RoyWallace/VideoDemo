@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
-import java.util.logging.SimpleFormatter;
 
 public class AudioRecordActivity extends BaseActivity implements View.OnClickListener, RecordListFragment.ItemClickListener {
 
@@ -92,6 +91,8 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
                         new String[]{Manifest.permission.RECORD_AUDIO,
                                 Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
             } else {
+
+
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -165,6 +166,9 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            PcmToWav.makePCMFileToWAVFile(filePath, filePath.substring(0, filePath.lastIndexOf(".") + 1) + "wav", false);
+
         } else {
             Log.i("record", "创建文件失败，文件不存在");
         }
@@ -239,16 +243,13 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
     public void onRecordClick(File file) {
         fragment.dismiss();
 
-        int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, AudioFormat.CHANNEL_OUT_MONO, audioEncoding);
-
-        long duration = file.length() / minBufferSize * 1000;
-
         seekBar.setMax(100);
         fileLength = file.length();
         currentTime.setText("0");
 
-        SimpleDateFormat formatter = new SimpleDateFormat("mm:ss");
-        totalTime.setText("" + formatter.format(duration));
+        long duration = getPcmDuration(rateInHz, 16, 1, fileLength);
+        String durationString = duration / 1000 + ":" + duration % 1000;
+        totalTime.setText(durationString);
 
         new PlayTask().execute(file.getAbsolutePath());
     }
@@ -308,6 +309,7 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+
             } else {
 
             }
@@ -316,16 +318,29 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
 
         @Override
         protected void onProgressUpdate(Long... values) {
-//            seekBar.setProgress(values[0]);
-
             int percent = (int) (values[0] * 100 / fileLength);
             seekBar.setProgress(percent);
-            currentTime.setText("" + values[0]);
+
+            long current = getPcmDuration(rateInHz, 16, 1, values[0]);
+            String durationString = current / 1000 + ":" + current % 1000;
+            currentTime.setText(durationString);
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
 
         }
+    }
+
+    /**
+     * 数据量Byte=
+     * 采样频率Hz
+     * ×（采样位数/8）
+     * × 声道数
+     * × 时间s
+     */
+
+    long getPcmDuration(int rateInHz, int rateNumber, int channels, long fileLength) {
+        return ((fileLength * 1024 * 1000) / (rateInHz * rateNumber / 8 * channels)) / 1024;
     }
 }
