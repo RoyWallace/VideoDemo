@@ -19,18 +19,25 @@ public class AudioTrackTask extends BaseTask<Void, Long, String> {
 
     private int rateInHz = 44100;
 
-    int channel = AudioFormat.CHANNEL_IN_MONO;
+    int channel = AudioFormat.CHANNEL_OUT_MONO;
     int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
 
     private AudioTrack audioTrack;
 
-    public AudioTrackTask(String filePath) {
-        this.filePath = filePath;
+    public AudioTrackTask() {
     }
 
-
-    public void play() {
+    public void play(String filePath) {
+        this.filePath = filePath;
         execute();
+    }
+
+    public boolean isPlaying() {
+        return audioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING;
+    }
+
+    public void stop() {
+        audioTrack.stop();
     }
 
     @Override
@@ -38,7 +45,7 @@ public class AudioTrackTask extends BaseTask<Void, Long, String> {
         File file = new File(filePath);
         if (file.exists()) {
             try {
-                int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, AudioFormat.CHANNEL_OUT_MONO, audioEncoding);
+                int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, channel, audioEncoding);
                 byte[] bytes = new byte[minBufferSize];
 
                 if (Build.VERSION.SDK_INT >= 23) {

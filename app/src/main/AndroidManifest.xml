@@ -22,6 +22,8 @@
         <activity android:name=".chapter1.SurfaceViewActivity"></activity>
 
         <activity android:name=".chapter2.AudioRecordActivity"></activity>
+
+        <activity android:name=".chapter3.MediaExtractorActivity"></activity>
     </application>
 
 </manifest>

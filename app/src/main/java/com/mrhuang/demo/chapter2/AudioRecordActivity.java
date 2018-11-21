@@ -2,8 +2,6 @@ package com.mrhuang.demo.chapter2;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -22,12 +20,12 @@ import com.mrhuang.demo.R;
 
 import java.io.File;
 
-public class AudioRecordActivity extends BaseActivity implements View.OnClickListener, RecordListFragment.ItemClickListener, BaseTask.ProgressListener<Long> {
+public class AudioRecordActivity extends BaseActivity implements View.OnClickListener, RecordListFragment.ItemClickListener {
 
-    Button start, stop, play;
+    Button start, play;
     SeekBar seekBar;
 
-    TextView currentTime, totalTime;
+    TextView recordTextView, currentTime, totalTime;
 
     RecorderTask recorderTask;
     AudioTrackTask audioTrackTask;
@@ -43,8 +41,9 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
     @Override
     protected void getViews() {
         start = findViewById(R.id.start);
-        stop = findViewById(R.id.stop);
         play = findViewById(R.id.play);
+
+        recordTextView = findViewById(R.id.recordTextView);
 
         currentTime = findViewById(R.id.currentTime);
         totalTime = findViewById(R.id.totalTime);
@@ -55,36 +54,36 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
     @Override
     protected void viewCreated() {
         start.setOnClickListener(this);
-        stop.setOnClickListener(this);
         play.setOnClickListener(this);
 
         fragment = new RecordListFragment();
         fragment.setItemClickListener(this);
-
-        String filePath = getExternalFilesDir(Environment.DIRECTORY_MUSIC) + "/record" + System.currentTimeMillis() + ".pcm";
-        recorderTask = new RecorderTask(filePath);
-        audioTrackTask = new AudioTrackTask(filePath);
-        audioTrackTask.setProgressListener(this);
     }
 
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.start) {
-
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
-                    != PackageManager.PERMISSION_GRANTED) {
-
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.RECORD_AUDIO,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
+            if (recorderTask != null && recorderTask.isRecording) {
+                recorderTask.stopRecord();
+                start.setText("start");
             } else {
-                recorderTask.startRecording();
-            }
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+                        != PackageManager.PERMISSION_GRANTED) {
 
-        } else if (v.getId() == R.id.stop) {
-            recorderTask.stopRecord();
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.RECORD_AUDIO,
+                                    Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
+                } else {
+                    startRecording();
+                }
+            }
         } else if (v.getId() == R.id.play) {
-            fragment.show(getSupportFragmentManager(), "bottom");
+            if (audioTrackTask != null && audioTrackTask.isPlaying()) {
+                audioTrackTask.stop();
+                play.setText("play");
+            } else {
+                fragment.show(getSupportFragmentManager(), "bottom");
+            }
         }
     }
 
@@ -93,11 +92,26 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                recorderTask.startRecording();
+                startRecording();
             } else {
                 Toast.makeText(this, "你就给这点权限，我很难帮你办事！", Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    public void startRecording() {
+        String filePath = getExternalFilesDir(Environment.DIRECTORY_MUSIC) + "/record" + System.currentTimeMillis() + ".pcm";
+        recorderTask = new RecorderTask(filePath);
+        recorderTask.setProgressListener(new BaseTask.ProgressListener<Long>() {
+            @Override
+            public void onProgressUpdate(Long[] values) {
+                long current = getPcmDuration(44100, 16, 1, values[0]);
+                String durationString = String.format("%02d:%03d", current / 1000, current % 1000);
+                recordTextView.setText(durationString);
+            }
+        });
+        recorderTask.startRecording();
+        start.setText("stop");
     }
 
     long fileLength = 0;
@@ -108,23 +122,33 @@ public class AudioRecordActivity extends BaseActivity implements View.OnClickLis
 
         seekBar.setMax(100);
         fileLength = file.length();
-        currentTime.setText("0");
+        currentTime.setText("00:000");
 
         long duration = getPcmDuration(44100, 16, 1, fileLength);
         String durationString = duration / 1000 + ":" + duration % 1000;
         totalTime.setText(durationString);
 
-        audioTrackTask.play();
-    }
 
-    @Override
-    public void onProgressUpdate(Long[] values) {
-        int percent = (int) (values[0] * 100 / fileLength);
-        seekBar.setProgress(percent);
+        audioTrackTask = new AudioTrackTask();
+        audioTrackTask.setProgressListener(new BaseTask.ProgressListener<Long>() {
+            @Override
+            public void onProgressUpdate(Long[] values) {
+                int percent = (int) (values[0] * 100 / fileLength);
+                seekBar.setProgress(percent);
 
-        long current = getPcmDuration(44100, 16, 1, values[0]);
-        String durationString = current / 1000 + ":" + current % 1000;
-        currentTime.setText(durationString);
+                long current = getPcmDuration(44100, 16, 1, values[0]);
+                String durationString = current / 1000 + ":" + current % 1000;
+                currentTime.setText(durationString);
+            }
+        });
+        audioTrackTask.setCompleteListener(new BaseTask.CompleteListener() {
+            @Override
+            public void onComplete(Object o) {
+                play.setText("play");
+            }
+        });
+        audioTrackTask.play(file.getPath());
+        play.setText("stop");
     }
 
     /**
