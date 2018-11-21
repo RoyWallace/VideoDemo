@@ -70,7 +70,7 @@ public class VideoPlayer {
                         e.printStackTrace();
                     }
 
-//                    break;
+                    break;
                 }
             }
 
@@ -86,7 +86,7 @@ public class VideoPlayer {
             playing = true;
             while (playing) {
                 int inputBufferIndex = videoCodec.dequeueInputBuffer(TIMEOUT_US);
-                if (inputBufferIndex > 0) {
+                if (inputBufferIndex >= 0) {
                     ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
                     int sampleSize = videoExtractor.readSampleData(inputBuffer, 0);
 
