@@ -98,7 +98,7 @@ public class VideoPlayer {
                         videoExtractor.advance();
                     }
                 } else {
-                    break;
+
                 }
 
                 int outputBufferIndex = videoCodec.dequeueOutputBuffer(videoBufferInfo, TIMEOUT_US);
