@@ -2,8 +2,6 @@ package com.mrhuang.demo.chapter3;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.media.MediaExtractor;
-import android.media.MediaFormat;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -13,21 +11,23 @@ import android.support.v4.content.ContextCompat;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.mrhuang.demo.BaseActivity;
 import com.mrhuang.demo.R;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+public class MediaExtractorActivity extends BaseActivity implements SurfaceHolder.Callback, View.OnClickListener, VideoPlayer.VideoSizeCallBack {
 
-public class MediaExtractorActivity extends BaseActivity implements SurfaceHolder.Callback {
-
-    String fileName = "VID_20181031_200530.mp4";
+    String fileName = "VID_20181014_145854.mp4";
 
     String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getPath();
 
     SurfaceView surfaceView;
+
+    SurfaceHolder surfaceHolder;
+
+    Button playButton;
 
     VideoPlayer videoPlayer;
 
@@ -40,7 +40,7 @@ public class MediaExtractorActivity extends BaseActivity implements SurfaceHolde
     @Override
     protected void getViews() {
         surfaceView = findViewById(R.id.surfaceView);
-
+        playButton = findViewById(R.id.playButton);
     }
 
     @Override
@@ -50,15 +50,21 @@ public class MediaExtractorActivity extends BaseActivity implements SurfaceHolde
         String filePath = path + "/Camera/" + fileName;
         videoPlayer.setVideoPath(filePath);
         surfaceView.getHolder().addCallback(this);
+
+        playButton.setOnClickListener(this);
+
+        videoPlayer.setVideoSizeCallBack(this);
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        this.surfaceHolder = holder;
         videoPlayer.setSurface(holder.getSurface());
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        this.surfaceHolder = holder;
         videoPlayer.setSurface(holder.getSurface());
     }
 
@@ -74,6 +80,7 @@ public class MediaExtractorActivity extends BaseActivity implements SurfaceHolde
         if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 videoPlayer.play();
+                playButton.setText("stop");
             } else {
                 Toast.makeText(this, "你就给这点权限，我很难帮你办事！", Toast.LENGTH_SHORT).show();
                 finish();
@@ -81,7 +88,7 @@ public class MediaExtractorActivity extends BaseActivity implements SurfaceHolde
         }
     }
 
-    void startPlay(View view) {
+    void startPlay() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
 
@@ -89,7 +96,26 @@ public class MediaExtractorActivity extends BaseActivity implements SurfaceHolde
                     new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 100);
         } else {
             videoPlayer.play();
+            playButton.setText("stop");
         }
 
+    }
+
+    @Override
+    public void onClick(View v) {
+        if (v == playButton) {
+            startPlay();
+        }
+    }
+
+    @Override
+    public void callback(final int width, final int height) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                surfaceHolder.setFixedSize(surfaceView.getWidth(), height * surfaceView.getWidth() / width );
+            }
+        });
     }
 }

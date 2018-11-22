@@ -31,6 +31,16 @@ public class VideoPlayer {
 
     private boolean playing = false;
 
+    public int width;
+
+    public int height;
+
+    public void setVideoSizeCallBack(VideoSizeCallBack videoSizeCallBack) {
+        this.videoSizeCallBack = videoSizeCallBack;
+    }
+
+    VideoSizeCallBack videoSizeCallBack;
+
     public void setVideoPath(String filePath) {
         this.filePath = filePath;
     }
@@ -40,7 +50,9 @@ public class VideoPlayer {
     }
 
     public void play() {
+        playing = true;
         new DecodeThread().start();
+        new audioDecodeThread().start();
     }
 
     public void stop() {
@@ -51,35 +63,45 @@ public class VideoPlayer {
         @Override
         public void run() {
             videoDecode();
+        }
+    }
+
+    class audioDecodeThread extends Thread {
+        @Override
+        public void run() {
             audioDecode();
         }
     }
 
     void videoDecode() {
 
-        MediaExtractor videoExtractor = new MediaExtractor();
-        MediaCodec videoCodec = null;
+        MediaExtractor mediaExtractor = new MediaExtractor();
+        MediaCodec mediaCodec = null;
 
         try {
-            videoExtractor.setDataSource(filePath);
+            mediaExtractor.setDataSource(filePath);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        for (int i = 0; i < videoExtractor.getTrackCount(); i++) {
-            MediaFormat mediaFormat = videoExtractor.getTrackFormat(i);
+        for (int i = 0; i < mediaExtractor.getTrackCount(); i++) {
+            MediaFormat mediaFormat = mediaExtractor.getTrackFormat(i);
             String mime = mediaFormat.getString(MediaFormat.KEY_MIME);
 
 
             if (mime.startsWith(KEY_VIDEO)) {//匹配视频对应的轨道
-                videoExtractor.selectTrack(i);//选择视频对应的轨道
+                mediaExtractor.selectTrack(i);//选择视频对应的轨道
 
                 //获取视频总时长
                 duration = mediaFormat.getLong(MediaFormat.KEY_DURATION);
+                width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH);
+                height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT);
+
+                videoSizeCallBack.callback(width, height);
 
                 try {
-                    videoCodec = MediaCodec.createDecoderByType(mime);
-                    videoCodec.configure(mediaFormat, surface, null, 0);//flag=1的时候为encode
+                    mediaCodec = MediaCodec.createDecoderByType(mime);
+                    mediaCodec.configure(mediaFormat, surface, null, 0);//flag=1的时候为encode
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -88,38 +110,31 @@ public class VideoPlayer {
             }
         }
 
-        if (videoCodec == null) {
+        if (mediaCodec == null) {
             return;
         }
 
-        videoCodec.start();
+        mediaCodec.start();
 
         MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
-        ByteBuffer[] inputBuffers = videoCodec.getInputBuffers();
+        ByteBuffer[] inputBuffers = mediaCodec.getInputBuffers();
 
-        playing = true;
+
+        boolean readEnd = false;
+
         while (playing) {
-            int inputBufferIndex = videoCodec.dequeueInputBuffer(TIMEOUT_US);
-            if (inputBufferIndex >= 0) {
-                ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
-                int sampleSize = videoExtractor.readSampleData(inputBuffer, 0);
 
-                if (sampleSize < 0) {
-                    videoCodec.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-                    break;
-                } else {
-                    videoCodec.queueInputBuffer(inputBufferIndex, 0, sampleSize, videoExtractor.getSampleTime(), 0);
-                    videoExtractor.advance();
-                }
+            if (!readEnd) {
+                readEnd = putBufferToCoder(mediaExtractor, mediaCodec, inputBuffers);
             }
 
-            int outputBufferIndex = videoCodec.dequeueOutputBuffer(videoBufferInfo, TIMEOUT_US);
+            int outputBufferIndex = mediaCodec.dequeueOutputBuffer(videoBufferInfo, TIMEOUT_US);
             switch (outputBufferIndex) {
                 case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
                     Log.v(TAG, "format changed");
                     break;
                 case MediaCodec.INFO_TRY_AGAIN_LATER:
-                    Log.v(TAG, "解码当前帧超时");
+                    Log.v(TAG, "视频解码当前帧超时");
                     break;
                 case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
                     //outputBuffers = videoCodec.getOutputBuffers();
@@ -132,14 +147,19 @@ public class VideoPlayer {
                     //如果缓冲区里的可展示时间>当前视频播放的进度，就休眠一下
 //                        sleepRender(videoBufferInfo, startMs);
                     //渲染
-                    videoCodec.releaseOutputBuffer(outputBufferIndex, true);
+                    mediaCodec.releaseOutputBuffer(outputBufferIndex, true);
                     break;
+            }
+
+            if ((videoBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                Log.v(TAG, "buffer stream end");
+                break;
             }
         }
 
-        videoCodec.stop();
-        videoCodec.release();
-        videoExtractor.release();
+        mediaCodec.stop();
+        mediaCodec.release();
+        mediaExtractor.release();
     }
 
     void audioDecode() {
@@ -159,11 +179,15 @@ public class VideoPlayer {
             if (mime.startsWith(KEY_AUDIO)) {
                 mediaExtractor.selectTrack(i);
 
-                int audioEncoding = mediaFormat.getInteger(MediaFormat.KEY_PCM_ENCODING);
+                int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
                 int rateInHz = mediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE);
-                int channel = mediaFormat.getInteger(MediaFormat.KEY_CHANNEL_MASK);
+                int channelCount = mediaFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT);//不能直接获取KEY_CHANNEL_MASK，所以只能获取声道数量然后再做处理
+
+                int channel = channelCount == 1 ? AudioFormat.CHANNEL_OUT_MONO : AudioFormat.CHANNEL_OUT_STEREO;
 
                 int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, channel, audioEncoding);
+                int maxInputSize = mediaFormat.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE);
+                int audioInputBufferSize = minBufferSize > 0 ? minBufferSize * 4 : maxInputSize;
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     audioTrack = new AudioTrack.Builder()
@@ -172,11 +196,11 @@ public class VideoPlayer {
                                     .setSampleRate(rateInHz)
                                     .setChannelMask(channel)
                                     .build())
-                            .setBufferSizeInBytes(minBufferSize)
+                            .setBufferSizeInBytes(audioInputBufferSize)
                             .build();
                 } else {
                     audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, rateInHz, channel,
-                            audioEncoding, minBufferSize, AudioTrack.MODE_STREAM);
+                            audioEncoding, audioInputBufferSize, AudioTrack.MODE_STREAM);
                 }
 
                 try {
@@ -186,10 +210,100 @@ public class VideoPlayer {
                     e.printStackTrace();
                 }
 
+                break;
 
             }
         }
 
+        if (mediaCodec == null) {
+            return;
+        }
+
+        audioTrack.play();
+        mediaCodec.start();
+
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        ByteBuffer[] inputBuffers = mediaCodec.getInputBuffers();
+        ByteBuffer[] outputBuffers = mediaCodec.getOutputBuffers();
+
+        boolean readEnd = false;
+        while (playing) {
+
+            if (!readEnd) {
+                readEnd = putBufferToCoder(mediaExtractor, mediaCodec, inputBuffers);
+            }
+
+            int outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US);
+            switch (outputBufferIndex) {
+                case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                    Log.v(TAG, "format changed");
+                    break;
+                case MediaCodec.INFO_TRY_AGAIN_LATER:
+                    Log.v(TAG, "音频解码当前帧超时");
+                    break;
+                case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                    outputBuffers = mediaCodec.getOutputBuffers();
+                    Log.v(TAG, "output buffers changed");
+                    break;
+                default:
+                    ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];//1. 视频可以直接显示在Surface上，音频需要获取pcm所在的ByteBuffer
+                    byte[] tempBuffer = new byte[outputBuffer.limit()];
+                    outputBuffer.position(0);
+                    outputBuffer.get(tempBuffer, 0, outputBuffer.limit());      //2.将保存在ByteBuffer的数据，转到临时的tempBuffer字节数组中去
+                    outputBuffer.clear();
+                    if (bufferInfo.size > 0) {
+                        audioTrack.write(tempBuffer, 0, bufferInfo.size);
+                    }
+                    //延时操作
+                    //如果缓冲区里的可展示时间>当前视频播放的进度，就休眠一下
+                    //sleepRender(videoBufferInfo, startMs);
+                    //渲染
+                    mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                    break;
+            }
+
+            if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                Log.v(TAG, "buffer stream end");
+                break;
+            }
+
+        }
+
+        mediaExtractor.release();
+        mediaCodec.stop();
+        mediaCodec.release();
+        audioTrack.stop();
+        audioTrack.release();
+
+    }
+
+    /**
+     * 将缓冲区传递至解码器
+     *
+     * @param extractor
+     * @param decoder
+     * @param inputBuffers
+     * @return 如果到了文件末尾，返回true;否则返回false
+     */
+    private boolean putBufferToCoder(MediaExtractor extractor, MediaCodec decoder, ByteBuffer[] inputBuffers) {
+        boolean isMediaEnd = false;
+        int inputBufferIndex = decoder.dequeueInputBuffer(TIMEOUT_US);
+        if (inputBufferIndex >= 0) {
+            ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
+            int sampleSize = extractor.readSampleData(inputBuffer, 0);
+            if (sampleSize < 0) {
+                decoder.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                isMediaEnd = true;
+            } else {
+                decoder.queueInputBuffer(inputBufferIndex, 0, sampleSize, extractor.getSampleTime(), 0);
+                extractor.advance();
+            }
+        }
+        return isMediaEnd;
+    }
+
+    public interface VideoSizeCallBack {
+        public void callback(int width, int height);
     }
 
 }
