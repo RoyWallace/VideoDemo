@@ -111,8 +111,6 @@ public class VideoPlayer {
                     videoCodec.queueInputBuffer(inputBufferIndex, 0, sampleSize, videoExtractor.getSampleTime(), 0);
                     videoExtractor.advance();
                 }
-            } else {
-                break;
             }
 
             int outputBufferIndex = videoCodec.dequeueOutputBuffer(videoBufferInfo, TIMEOUT_US);
