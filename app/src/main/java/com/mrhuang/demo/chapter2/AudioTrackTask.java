@@ -48,7 +48,7 @@ public class AudioTrackTask extends BaseTask<Void, Long, String> {
                 int minBufferSize = AudioTrack.getMinBufferSize(rateInHz, channel, audioEncoding);
                 byte[] bytes = new byte[minBufferSize];
 
-                if (Build.VERSION.SDK_INT >= 23) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     audioTrack = new AudioTrack.Builder()
                             .setAudioFormat(new AudioFormat.Builder()
                                     .setEncoding(audioEncoding)
@@ -65,9 +65,6 @@ public class AudioTrackTask extends BaseTask<Void, Long, String> {
                 audioTrack.play();
 
                 InputStream is = new FileInputStream(filePath);
-
-                //实测length参数很重要，太大或者大小都有可能导致异常：play() called on uninitialized AudioTrack
-                //int length = (int) audioFile.length();
 
                 int read;
                 long current = 0;
