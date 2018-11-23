@@ -7,11 +7,14 @@ import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.view.Surface;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 
 public class VideoPlayer {
 
@@ -27,7 +30,7 @@ public class VideoPlayer {
 
     private long duration;
 
-    private static long TIMEOUT_US = 10000;
+    private static long TIMEOUT_US = 0;
 
     private boolean playing = false;
 
@@ -118,6 +121,7 @@ public class VideoPlayer {
 
         MediaCodec.BufferInfo videoBufferInfo = new MediaCodec.BufferInfo();
         ByteBuffer[] inputBuffers = mediaCodec.getInputBuffers();
+        ByteBuffer[] outputBuffers = mediaCodec.getInputBuffers();
 
 
         boolean readEnd = false;
@@ -135,19 +139,32 @@ public class VideoPlayer {
                     break;
                 case MediaCodec.INFO_TRY_AGAIN_LATER:
                     Log.v(TAG, "视频解码当前帧超时");
+                    try {
+                        // wait 10ms
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                    }
                     break;
                 case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                    //outputBuffers = videoCodec.getOutputBuffers();
+//                    outputBuffers = mediaCodec.getOutputBuffers();
                     Log.v(TAG, "output buffers changed");
                     break;
                 default:
                     //直接渲染到Surface时使用不到outputBuffer
-                    //ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+//                    ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
                     //延时操作
                     //如果缓冲区里的可展示时间>当前视频播放的进度，就休眠一下
 //                        sleepRender(videoBufferInfo, startMs);
+
+//                    if (videoBufferInfo.presentationTimeUs)
+
+
                     //渲染
-                    mediaCodec.releaseOutputBuffer(outputBufferIndex, true);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        mediaCodec.releaseOutputBuffer(outputBufferIndex, mediaExtractor.getSampleTime());
+                    } else {
+                        mediaCodec.releaseOutputBuffer(outputBufferIndex, true);
+                    }
                     break;
             }
 
@@ -227,6 +244,8 @@ public class VideoPlayer {
         ByteBuffer[] outputBuffers = mediaCodec.getOutputBuffers();
 
         boolean readEnd = false;
+
+        long startTime = 0;
         while (playing) {
 
             if (!readEnd) {
@@ -247,18 +266,26 @@ public class VideoPlayer {
                     break;
                 default:
                     ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];//1. 视频可以直接显示在Surface上，音频需要获取pcm所在的ByteBuffer
+
+//
                     byte[] tempBuffer = new byte[outputBuffer.limit()];
                     outputBuffer.position(0);
                     outputBuffer.get(tempBuffer, 0, outputBuffer.limit());      //2.将保存在ByteBuffer的数据，转到临时的tempBuffer字节数组中去
                     outputBuffer.clear();
+
                     if (bufferInfo.size > 0) {
                         audioTrack.write(tempBuffer, 0, bufferInfo.size);
                     }
+
                     //延时操作
                     //如果缓冲区里的可展示时间>当前视频播放的进度，就休眠一下
                     //sleepRender(videoBufferInfo, startMs);
                     //渲染
-                    mediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                        mediaCodec.releaseOutputBuffer(outputBufferIndex, mediaExtractor.getSampleTime());
+//                    } else {
+                    mediaCodec.releaseOutputBuffer(outputBufferIndex, true);
+//                    }
                     break;
             }
 
@@ -300,6 +327,23 @@ public class VideoPlayer {
             }
         }
         return isMediaEnd;
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public short[] getSamplesForChannel(MediaCodec codec, int bufferId, int channelIx) {
+        ByteBuffer outputBuffer = codec.getOutputBuffer(bufferId);
+        MediaFormat format = codec.getOutputFormat(bufferId);
+        int numChannels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
+        ShortBuffer samples = outputBuffer.order(ByteOrder.nativeOrder()).asShortBuffer();
+        if (channelIx < 0 || channelIx >= numChannels) {
+            return null;
+        }
+        short[] res = new short[samples.remaining() / numChannels];
+        for (int i = 0; i < res.length; ++i) {
+            res[i] = samples.get(i * numChannels + channelIx);
+        }
+        return res;
     }
 
     public interface VideoSizeCallBack {
