@@ -10,12 +10,22 @@ import android.widget.ListView;
 import com.mrhuang.demo.chapter1.SurfaceViewActivity;
 import com.mrhuang.demo.chapter2.AudioRecordActivity;
 import com.mrhuang.demo.chapter3.MediaExtractorActivity;
+import com.mrhuang.demo.chapter3.VideoClipActivity;
+import com.mrhuang.demo.opengl.chapter1.TriangleActivity;
+import com.mrhuang.demo.opengl.chapter2.GLVideoActivity;
 
 public class MainActivity extends BaseActivity implements AdapterView.OnItemClickListener {
 
     ListView listView;
 
-    String[] menuList = {"SurfaceView with image", "AudioRecord and AudioTrack", "MediaExtractor"};
+    String[] menuList = {
+            "SurfaceView with image",
+            "AudioRecord and AudioTrack",
+            "MediaExtractor",
+            "VideoClip",
+            "glSurfaceView",
+            "glVideo"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +57,16 @@ public class MainActivity extends BaseActivity implements AdapterView.OnItemClic
                 break;
             case 2:
                 startActivity(new Intent(this, MediaExtractorActivity.class));
+                break;
+            case 3:
+                startActivity(new Intent(this, VideoClipActivity.class));
+                break;
+            case 4:
+                startActivity(new Intent(this, TriangleActivity.class));
+                break;
+
+            case 5:
+                startActivity(new Intent(this, GLVideoActivity.class));
                 break;
         }
     }

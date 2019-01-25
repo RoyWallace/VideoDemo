@@ -126,6 +126,7 @@ public class VideoPlayer {
 
         boolean readEnd = false;
 
+        long lastSampleTime = 0;
         while (playing) {
 
             if (!readEnd) {
@@ -152,14 +153,23 @@ public class VideoPlayer {
                 default:
                     //直接渲染到Surface时使用不到outputBuffer
 //                    ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-                    //延时操作
-                    //如果缓冲区里的可展示时间>当前视频播放的进度，就休眠一下
-//                        sleepRender(videoBufferInfo, startMs);
 
-//                    if (videoBufferInfo.presentationTimeUs)
+                    //延时操作 获取两个视频帧之间的时间间隔 让线程休眠对应的毫秒数，以保证视频播放速度正常。
+                    long currentSampleTime = videoBufferInfo.presentationTimeUs;
+                    if (lastSampleTime > 0) {
+                        long distant = (currentSampleTime - lastSampleTime) / 1000;
+                        Log.i(TAG, "distant: " + distant);
+                        if (distant > 0) {
+                            try {
+                                Thread.sleep(distant);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    lastSampleTime = currentSampleTime;
 
-
-                    //渲染
+                    //渲染 释放缓冲区
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         mediaCodec.releaseOutputBuffer(outputBufferIndex, mediaExtractor.getSampleTime());
                     } else {
@@ -245,7 +255,7 @@ public class VideoPlayer {
 
         boolean readEnd = false;
 
-        long startTime = 0;
+        long timeDistant = 0;
         while (playing) {
 
             if (!readEnd) {
@@ -266,7 +276,6 @@ public class VideoPlayer {
                     break;
                 default:
                     ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];//1. 视频可以直接显示在Surface上，音频需要获取pcm所在的ByteBuffer
-
 //
                     byte[] tempBuffer = new byte[outputBuffer.limit()];
                     outputBuffer.position(0);

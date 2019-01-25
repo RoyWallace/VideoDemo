@@ -4,6 +4,11 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true" />
 
     <application
         android:allowBackup="true"
@@ -18,12 +23,23 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="www.duowan.com"
+                    android:scheme="http" />
+            </intent-filter>
         </activity>
-        <activity android:name=".chapter1.SurfaceViewActivity"></activity>
-
-        <activity android:name=".chapter2.AudioRecordActivity"></activity>
-
-        <activity android:name=".chapter3.MediaExtractorActivity"></activity>
+        <activity android:name=".chapter1.SurfaceViewActivity" />
+        <activity android:name=".chapter2.AudioRecordActivity" />
+        <activity android:name=".chapter3.MediaExtractorActivity" />
+        <activity android:name=".chapter3.VideoClipActivity" />
+        <activity android:name=".opengl.chapter1.TriangleActivity"/>
+        <activity android:name=".opengl.chapter2.GLVideoActivity"/>
     </application>
 
 </manifest>
