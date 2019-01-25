@@ -18,7 +18,7 @@ public class GLVideoActivity extends AppCompatActivity {
 
         glSurfaceView = findViewById(R.id.glSurfaceView);
         glSurfaceView.setEGLContextClientVersion(2);
-        GLVideoRenderer renderer = new GLVideoRenderer(this, "http://vod-ws.huozu66.com/lgQRON-OEgN2a9pMvZs1Jq-vYtC8");
+        GLVideoRenderer renderer = new GLVideoRenderer(this, "/storage/emulated/0/Download/VID_20181014_145854.mp4");
         renderer.setRenderCallback(glSurfaceView::requestRender);
 
         glSurfaceView.setRenderer(renderer);

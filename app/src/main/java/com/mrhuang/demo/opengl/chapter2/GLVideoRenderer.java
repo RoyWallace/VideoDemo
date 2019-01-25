@@ -91,9 +91,9 @@ public class GLVideoRenderer implements GLSurfaceView.Renderer
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         String vertexShader = RawReader.readRawTextFile(context
-                , R.raw.vertex_shader);
+                , R.raw.oes_vertex_shader);
         String fragmentShader = RawReader.readRawTextFile(context
-                , R.raw.fragment_shader);
+                , R.raw.oes_fragment_shader);
 
         // 创建 vertex shader和fragment shader 并将其添加到shader进行编译
         programId = ShaderUtils.createProgram(vertexShader, fragmentShader);
@@ -165,6 +165,7 @@ public class GLVideoRenderer implements GLSurfaceView.Renderer
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        Log.i(TAG, "onDrawFrame");
         GLES20.glClearColor(1f, 1f, 1f, 1f);
         GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
         synchronized (this) {
@@ -175,15 +176,15 @@ public class GLVideoRenderer implements GLSurfaceView.Renderer
             }
         }
         GLES20.glUseProgram(programId);
-//        GLES20.glUniformMatrix4fv(uMatrixLocation, 1, false, projectionMatrix, 0);
+        GLES20.glUniformMatrix4fv(uMatrixLocation, 1, false, projectionMatrix, 0);
         GLES20.glUniformMatrix4fv(uSTMMatrixHandle, 1, false, mSTMatrix, 0);
 
         vertexBuffer.position(0);
-        GLES20.glVertexAttribPointer(aPositionLocation, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer);
+        GLES20.glVertexAttribPointer(aPositionLocation, 3, GLES20.GL_FLOAT, false, 12, vertexBuffer);
         GLES20.glEnableVertexAttribArray(aPositionLocation);
 
         textureVertexBuffer.position(0);
-        GLES20.glVertexAttribPointer(aTextureCoordLocation, 2, GLES20.GL_FLOAT, false, 0, textureVertexBuffer);
+        GLES20.glVertexAttribPointer(aTextureCoordLocation, 2, GLES20.GL_FLOAT, false, 8, textureVertexBuffer);
         GLES20.glEnableVertexAttribArray(aTextureCoordLocation);
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
@@ -219,7 +220,7 @@ public class GLVideoRenderer implements GLSurfaceView.Renderer
         return mediaPlayer;
     }
 
-    public interface RenderCallback{
+    public interface RenderCallback {
         void renderImmediately();
     }
 
