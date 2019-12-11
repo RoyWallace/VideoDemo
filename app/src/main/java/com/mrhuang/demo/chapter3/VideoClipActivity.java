@@ -2,12 +2,12 @@ package com.mrhuang.demo.chapter3;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
+
+import androidx.annotation.Nullable;
 
 import com.mrhuang.demo.BaseActivity;
 import com.mrhuang.demo.R;
